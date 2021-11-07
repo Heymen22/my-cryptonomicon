@@ -48,6 +48,7 @@
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
               v-for="tickerInstance in tickersList"
+              @click="selected = tickerInstance"
               :key="tickerInstance.name"
               class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           >
@@ -61,7 +62,7 @@
             </div>
             <div class="w-full border-t border-gray-200"></div>
             <button
-                @click="removeTicker(tickerInstance)"
+                @click.stop="removeTicker(tickerInstance)"
                 class="flex items-center justify-center font-medium w-full bg-gray-100 px-4 py-4 sm:px-6 text-md text-gray-500 hover:text-gray-600 hover:bg-gray-200 hover:opacity-20 transition-all focus:outline-none"
             >
               <svg
@@ -83,9 +84,11 @@
         </dl>
         <hr class="w-full border-t border-gray-600 my-4"/>
       </template>
-      <section class="relative">
+      <section
+          v-if="selected.name"
+          class="relative">
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          VUE - USD
+          {{ selected.name }} - USD
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
@@ -140,7 +143,8 @@ export default {
   data() {
     return {
       tickerInput: "",
-      tickersList: []
+      tickersList: [],
+      selected: {},
     }
   },
 
