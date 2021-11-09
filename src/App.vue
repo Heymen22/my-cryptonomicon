@@ -50,6 +50,7 @@
               v-for="tickerInstance in tickersList"
               @click="selected = tickerInstance"
               :key="tickerInstance.name"
+              :class="{'border-4': selected === tickerInstance}"
               class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           >
             <div class="px-4 py-5 sm:p-6 text-center">
@@ -57,7 +58,7 @@
                 {{ tickerInstance.name }} - USD
               </dt>
               <dd class="mt-1 text-3xl font-semibold text-gray-900">
-                {{ tickerInstance.value }}
+                {{ tickerInstance.price }}
               </dd>
             </div>
             <div class="w-full border-t border-gray-200"></div>
@@ -85,26 +86,20 @@
         <hr class="w-full border-t border-gray-600 my-4"/>
       </template>
       <section
-          v-if="selected.name"
+          v-if="selected != null"
           class="relative">
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
           {{ selected.name }} - USD
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
+              v-for="(bar, idx) in selected.lastValues"
+              :key="idx"
               class="bg-purple-800 border w-10 h-24"
-          ></div>
-          <div
-              class="bg-purple-800 border w-10 h-32"
-          ></div>
-          <div
-              class="bg-purple-800 border w-10 h-48"
-          ></div>
-          <div
-              class="bg-purple-800 border w-10 h-16"
           ></div>
         </div>
         <button
+            @click="selected = null"
             type="button"
             class="absolute top-0 right-0"
         >
@@ -144,21 +139,24 @@ export default {
     return {
       tickerInput: "",
       tickersList: [],
-      selected: {},
+      selected: null,
     }
   },
 
   methods: {
     addTicker() {
       if (this.tickerInput) {
-        const newTicker = {name: this.tickerInput.toUpperCase(), value: "-"};
+        const newTicker = {name: this.tickerInput.toUpperCase(), price: "-", lastValues: []};
         this.tickersList.push(newTicker);
-        this.tickerInput = ''
+        this.tickerInput = '';
       }
     },
 
     removeTicker(tickerToRemove) {
-      this.tickersList = this.tickersList.filter(ticker => ticker !== tickerToRemove)
+      this.tickersList = this.tickersList.filter(ticker => ticker !== tickerToRemove);
+      if (this.selected === tickerToRemove) {
+        this.selected = null;
+      }
     },
 
     async updateAllTickers() {
@@ -170,8 +168,10 @@ export default {
         if (response.ok) { // если HTTP-статус в диапазоне 200-299
           // получаем тело ответа
           const json = await response.json();
-          ticker.value = json.USD
-          console.log(`Обновлено значение для ${ticker.name}`)
+          const normalizedPrice = json.USD > 1 ? json.USD.toFixed(2) : json.USD.toPrecision(2)
+          ticker.price = normalizedPrice;
+          ticker.lastValues.push(normalizedPrice);
+          console.log(`Обновлено значение для ${ticker.name}`);
         } else {
           console.log(`Ошибка запроса статуса для монеты ${name}: ${response.status}`);
         }
@@ -179,7 +179,7 @@ export default {
     }
   },
   created() {
-    setInterval(this.updateAllTickers, 5000)
+    setInterval(this.updateAllTickers, 5000);
   }
 }
 
