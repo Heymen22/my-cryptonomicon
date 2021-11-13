@@ -1,5 +1,15 @@
 <template>
   <div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
+    <div v-if="!loaded"
+         class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center">
+      <svg class="animate-spin -ml-1 mr-3 h-12 w-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+           viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    </div>
+
     <div class="container">
       <div class="w-full my-4"></div>
       <section>
@@ -11,7 +21,8 @@
             <div class="mt-1 relative rounded-md shadow-md">
               <input
                   v-model="tickerInput"
-                  @keydown.enter="addTicker"
+                  @keydown.enter="addTicker(tickerInput)"
+                  @keyup="getHelpSymbols($event)"
                   type="text"
                   name="wallet"
                   id="wallet"
@@ -19,11 +30,28 @@
                   placeholder="Например DOGE"
               />
             </div>
+            <div class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
+            <span
+                v-for="(symbol, idx) in helpSymbols"
+                :key="idx"
+                @click="addTicker(symbol)"
+                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
+            >
+            {{ symbol }}
+            </span>
+            </div>
+            <div
+                v-if="tickerIsAdded"
+                class="text-sm text-red-600"
+            >
+              Такой тикер уже добавлен
+            </div>
+
           </div>
         </div>
 
         <button
-            v-on:click="addTicker"
+            v-on:click="addTicker(tickerInput)"
             type="button"
             class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
         >
@@ -141,16 +169,22 @@ export default {
       tickerInput: "",
       tickersList: [],
       selected: null,
-    }
+      loaded: false,
+      symbols: [],
+      helpSymbols: [],
+      tickerIsAdded: false,
+    };
   },
 
   methods: {
-    addTicker() {
-      if (this.tickerInput) {
-        const newTicker = {name: this.tickerInput.toUpperCase(), price: "-", lastValues: []};
-        this.tickersList.push(newTicker);
-        this.tickerInput = '';
+    addTicker(tickerName) {
+      if (this.tickersList.find(ticker => ticker.name === tickerName.toUpperCase())) {
+        this.tickerIsAdded = true;
+        return;
       }
+      const newTicker = {name: tickerName.toUpperCase(), price: "-", lastValues: []};
+      this.tickersList.push(newTicker);
+      this.tickerInput = '';
     },
 
     removeTicker(tickerToRemove) {
@@ -183,12 +217,33 @@ export default {
     normalizePrices(pricesList) {
       const maxValue = Math.max(...pricesList);
       const minValue = Math.min(...pricesList);
-      return pricesList.map(price => 5 +((price - minValue) * 95) / (maxValue - minValue));
+      return pricesList.map(price => 5 + ((price - minValue) * 95) / (maxValue - minValue));
+    },
+    async loadAllCoins() {
+      const response = await fetch('https://min-api.cryptocompare.com/data/all/coinlist?summary=true');
+      const data = await response.json();
+      for (let coinObj in data.Data) {
+        this.symbols.push(data.Data[coinObj].Symbol);
+      }
+    },
+    getHelpSymbols(event) {
+      if(event.key === 'Enter') {
+        return;
+      }
+
+      if (this.tickerIsAdded) {
+        this.tickerIsAdded = !this.tickerIsAdded;
+      }
+      this.helpSymbols = this.symbols.filter(symbol => symbol.startsWith(this.tickerInput.toUpperCase())).slice(0, 4);
     },
 
   },
   created() {
     setInterval(this.updateAllTickers, 5000);
+    this.loadAllCoins();
+  },
+  mounted() {
+    this.loaded = true;
   }
 }
 
