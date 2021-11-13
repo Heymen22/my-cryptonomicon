@@ -93,8 +93,9 @@
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
-              v-for="(bar, idx) in selected.lastValues"
+              v-for="(bar, idx) in normalizePrices(selected.lastValues)"
               :key="idx"
+              :style="{height: `${bar}%`}"
               class="bg-purple-800 border w-10 h-24"
           ></div>
         </div>
@@ -159,24 +160,32 @@ export default {
       }
     },
 
-    async updateAllTickers() {
-      console.log('Тикеры обновились!!!')
+    updateAllTickers: async function () {
       for (const ticker of this.tickersList) {
 
         const response = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${ticker.name}&tsyms=USD&api_key=edea3124b01931d6bbb9c1102b4b0254fb7760c97d34adf476e11beafcc49d59`);
 
         if (response.ok) { // если HTTP-статус в диапазоне 200-299
           // получаем тело ответа
-          const json = await response.json();
-          const normalizedPrice = json.USD > 1 ? json.USD.toFixed(2) : json.USD.toPrecision(2)
-          ticker.price = normalizedPrice;
-          ticker.lastValues.push(normalizedPrice);
-          console.log(`Обновлено значение для ${ticker.name}`);
+          const data = await response.json();
+          if (data.response !== 'Error') {
+            const price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+            ticker.price = price;
+            ticker.lastValues.push(price);
+          } else {
+            console.log(`Неправильный запрос. ${data}`);
+          }
         } else {
-          console.log(`Ошибка запроса статуса для монеты ${name}: ${response.status}`);
+          console.log(`Ошибка запроса. Код: ${response.statusCode}`);
         }
       }
-    }
+    },
+    normalizePrices(pricesList) {
+      const maxValue = Math.max(...pricesList);
+      const minValue = Math.min(...pricesList);
+      return pricesList.map(price => 5 +((price - minValue) * 95) / (maxValue - minValue));
+    },
+
   },
   created() {
     setInterval(this.updateAllTickers, 5000);
