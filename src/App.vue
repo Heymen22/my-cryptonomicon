@@ -185,6 +185,7 @@ export default {
       const newTicker = {name: tickerName.toUpperCase(), price: "-", lastValues: []};
       this.tickersList.push(newTicker);
       this.tickerInput = '';
+      localStorage.setItem('cryptonomicon-list', JSON.stringify(this.tickersList));
     },
 
     removeTicker(tickerToRemove) {
@@ -241,6 +242,10 @@ export default {
   created() {
     setInterval(this.updateAllTickers, 5000);
     this.loadAllCoins();
+    const tickersListData = localStorage.getItem('cryptonomicon-list');
+    if (tickersListData) {
+      this.tickersList = JSON.parse(tickersListData);
+    }
   },
   mounted() {
     this.loaded = true;
