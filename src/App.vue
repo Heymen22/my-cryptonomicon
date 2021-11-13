@@ -22,7 +22,6 @@
               <input
                   v-model="tickerInput"
                   @keydown.enter="addTicker(tickerInput)"
-                  @keyup="getHelpSymbols($event)"
                   type="text"
                   name="wallet"
                   id="wallet"
@@ -71,11 +70,36 @@
           Добавить
         </button>
       </section>
+      <hr class="w-full border-t border-gray-600 my-4"/>
+      <button
+          v-if="page > 1"
+          @click="page = page - 1"
+          class="my-4 mx-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+      >
+        Назад
+      </button>
+      {{ page }}
+      <button
+          v-if="hasNextPage"
+          @click="page = page + 1"
+          class="my-4 mx-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+      >
+        Вперед
+      </button>
+      <div>
+        Фильтр:
+        <input
+            type="text"
+            placeholder="Введите фильтр"
+            v-model="filter"
+            class="block w-200 pr-10 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
+        >
+      </div>
       <template v-if="tickersList.length > 0">
         <hr class="w-full border-t border-gray-600 my-4"/>
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
-              v-for="tickerInstance in tickersList"
+              v-for="tickerInstance in filteredTickersList()"
               @click="selected = tickerInstance"
               :key="tickerInstance.name"
               :class="{'border-4': selected === tickerInstance}"
@@ -173,10 +197,24 @@ export default {
       symbols: [],
       helpSymbols: [],
       tickerIsAdded: false,
+      page: 1,
+      hasNextPage: true,
+      filter: '',
     };
   },
 
   methods: {
+    filteredTickersList() {
+      const start = (this.page - 1) * 6;
+      const end = this.page * 6;
+
+      const filteredTickersList = this.tickersList.filter(ticker => ticker.name.includes(this.filter.toUpperCase()));
+
+      this.hasNextPage = filteredTickersList.length > end;
+      return filteredTickersList.slice(start, end);
+
+    },
+
     addTicker(tickerName) {
       if (this.tickersList.find(ticker => ticker.name === tickerName.toUpperCase())) {
         this.tickerIsAdded = true;
@@ -185,6 +223,7 @@ export default {
       const newTicker = {name: tickerName.toUpperCase(), price: "-", lastValues: []};
       this.tickersList.push(newTicker);
       this.tickerInput = '';
+      this.filter = '';
       localStorage.setItem('cryptonomicon-list', JSON.stringify(this.tickersList));
     },
 
@@ -215,11 +254,13 @@ export default {
         }
       }
     },
+
     normalizePrices(pricesList) {
       const maxValue = Math.max(...pricesList);
       const minValue = Math.min(...pricesList);
       return pricesList.map(price => 5 + ((price - minValue) * 95) / (maxValue - minValue));
     },
+
     async loadAllCoins() {
       const response = await fetch('https://min-api.cryptocompare.com/data/all/coinlist?summary=true');
       const data = await response.json();
@@ -227,11 +268,8 @@ export default {
         this.symbols.push(data.Data[coinObj].Symbol);
       }
     },
-    getHelpSymbols(event) {
-      if(event.key === 'Enter') {
-        return;
-      }
 
+    getHelpSymbols() {
       if (this.tickerIsAdded) {
         this.tickerIsAdded = !this.tickerIsAdded;
       }
@@ -249,6 +287,14 @@ export default {
   },
   mounted() {
     this.loaded = true;
+  },
+  watch: {
+    filter() {
+      this.page = 1;
+    },
+    tickerInput() {
+      this.getHelpSymbols();
+    },
   }
 }
 
