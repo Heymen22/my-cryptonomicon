@@ -284,6 +284,16 @@ export default {
     if (tickersListData) {
       this.tickersList = JSON.parse(tickersListData);
     }
+    const windowData = Object.fromEntries(new URL(window.location).searchParams.entries());
+
+    if (windowData.filter) {
+      this.filter = windowData.filter;
+    }
+
+    if (windowData.page) {
+      this.page = Number(windowData.page);
+    }
+
   },
   mounted() {
     this.loaded = true;
@@ -291,10 +301,22 @@ export default {
   watch: {
     filter() {
       this.page = 1;
+      window.history.pushState(
+          null,
+          document.title,
+          `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
+      );
     },
     tickerInput() {
       this.getHelpSymbols();
     },
+    page() {
+      window.history.pushState(
+          null,
+          document.title,
+          `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
+      );
+    }
   }
 }
 
